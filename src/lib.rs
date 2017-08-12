@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 #![crate_name="itertools"]
+#![cfg_attr(not(feature = "use_std"), no_std)]
 
 //! Itertools — extra iterator adaptors, functions and macros.
 //!
@@ -15,6 +16,14 @@
 //! #[macro_use] extern crate itertools;
 //! ```
 //!
+//! ## Crate Features
+//!
+//! - `use_std`
+//!   - Enabled by default.
+//!   - Disable to compile itertools using `#![no_std]`. This disables
+//!     any items that depend on collections (like `group_by`, `unique`,
+//!     `kmerge`, `join` and many more).
+//!
 //! ## Rust Version
 //!
 //! This version of itertools requires Rust 1.12 or later.
@@ -23,13 +32,18 @@
 
 extern crate either;
 
+#[cfg(not(feature = "use_std"))]
+extern crate core as std;
+
 pub use either::Either;
 
 use std::iter::{IntoIterator};
-use std::fmt::Write;
 use std::cmp::Ordering;
 use std::fmt;
+#[cfg(feature = "use_std")]
 use std::hash::Hash;
+#[cfg(feature = "use_std")]
+use std::fmt::Write;
 
 #[macro_use]
 mod impl_macros;
@@ -42,34 +56,41 @@ pub mod structs {
         InterleaveShortest,
         Product,
         PutBack,
-        PutBackN,
         Batching,
         Step,
         MapResults,
         Merge,
         MergeBy,
-        MultiPeek,
         TakeWhileRef,
         WhileSome,
         Coalesce,
         TupleCombinations,
-        Combinations,
-        Unique,
-        UniqueBy,
         Flatten,
     };
+    #[cfg(feature = "use_std")]
+    pub use combinations::Combinations;
     pub use cons_tuples_impl::ConsTuples;
     pub use format::{Format, FormatWith};
+    #[cfg(feature = "use_std")]
     pub use groupbylazy::{IntoChunks, Chunk, Chunks, GroupBy, Group, Groups};
     pub use intersperse::Intersperse;
+    #[cfg(feature = "use_std")]
     pub use kmerge_impl::{KMerge, KMergeBy};
+    #[cfg(feature = "use_std")]
+    pub use multipeek_impl::MultiPeek;
     pub use pad_tail::PadUsing;
     pub use peeking_take_while::PeekingTakeWhile;
+    #[cfg(feature = "use_std")]
+    pub use put_back_n_impl::PutBackN;
+    #[cfg(feature = "use_std")]
     pub use rciter_impl::RcIter;
     pub use repeatn::RepeatN;
     pub use sources::{RepeatCall, Unfold, Iterate};
+    #[cfg(feature = "use_std")]
     pub use tee::Tee;
     pub use tuple_impl::{TupleBuffer, TupleWindows, Tuples};
+    #[cfg(feature = "use_std")]
+    pub use unique_impl::{Unique, UniqueBy};
     pub use with_position::WithPosition;
     pub use zip_eq_impl::ZipEq;
     pub use zip_longest::ZipLongest;
@@ -80,6 +101,7 @@ pub use concat_impl::concat;
 pub use cons_tuples_impl::cons_tuples;
 pub use diff::diff_with;
 pub use diff::Diff;
+#[cfg(feature = "use_std")]
 pub use kmerge_impl::{kmerge_by};
 pub use minmax::MinMaxResult;
 pub use peeking_take_while::PeekingNext;
@@ -95,20 +117,32 @@ pub mod free;
 pub use free::*;
 mod concat_impl;
 mod cons_tuples_impl;
+#[cfg(feature = "use_std")]
+mod combinations;
 mod diff;
 mod format;
+#[cfg(feature = "use_std")]
 mod groupbylazy;
 mod intersperse;
+#[cfg(feature = "use_std")]
 mod kmerge_impl;
 mod minmax;
+#[cfg(feature = "use_std")]
+mod multipeek_impl;
 mod pad_tail;
 mod peeking_take_while;
+#[cfg(feature = "use_std")]
+mod put_back_n_impl;
+#[cfg(feature = "use_std")]
 mod rciter_impl;
 mod repeatn;
 mod size_hint;
 mod sources;
+#[cfg(feature = "use_std")]
 mod tee;
 mod tuple_impl;
+#[cfg(feature = "use_std")]
+mod unique_impl;
 mod with_position;
 mod zip_eq_impl;
 mod zip_longest;
@@ -356,6 +390,7 @@ pub trait Itertools : Iterator {
     ///     assert_eq!(4, group.sum::<i32>().abs());
     /// }
     /// ```
+    #[cfg(feature = "use_std")]
     fn group_by<K, F>(self, key: F) -> GroupBy<K, Self, F>
         where Self: Sized,
               F: FnMut(&Self::Item) -> K,
@@ -390,6 +425,7 @@ pub trait Itertools : Iterator {
     ///     assert_eq!(4, chunk.sum());
     /// }
     /// ```
+    #[cfg(feature = "use_std")]
     fn chunks(self, size: usize) -> IntoChunks<Self>
         where Self: Sized,
     {
@@ -491,6 +527,7 @@ pub trait Itertools : Iterator {
     /// itertools::assert_equal(t2, 0..4);
     /// itertools::assert_equal(t1, 1..4);
     /// ```
+    #[cfg(feature = "use_std")]
     fn tee(self) -> (Tee<Self>, Tee<Self>)
         where Self: Sized,
               Self::Item: Clone
@@ -600,6 +637,7 @@ pub trait Itertools : Iterator {
     /// let it = vec![a, b, c].into_iter().kmerge();
     /// itertools::assert_equal(it, vec![0, 1, 2, 3, 4, 5]);
     /// ```
+    #[cfg(feature = "use_std")]
     fn kmerge(self) -> KMerge<<Self::Item as IntoIterator>::IntoIter>
         where Self: Sized,
               Self::Item: IntoIterator,
@@ -628,6 +666,7 @@ pub trait Itertools : Iterator {
     /// assert_eq!(it.next(), Some(0.));
     /// assert_eq!(it.last(), Some(-7.));
     /// ```
+    #[cfg(feature = "use_std")]
     fn kmerge_by<F>(self, first: F)
         -> KMergeBy<<Self::Item as IntoIterator>::IntoIter, F>
         where Self: Sized,
@@ -727,11 +766,12 @@ pub trait Itertools : Iterator {
     /// itertools::assert_equal(data.into_iter().unique(),
     ///                         vec![10, 20, 30, 40, 50]);
     /// ```
+    #[cfg(feature = "use_std")]
     fn unique(self) -> Unique<Self>
         where Self: Sized,
               Self::Item: Clone + Eq + Hash
     {
-        adaptors::unique(self)
+        unique_impl::unique(self)
     }
 
     /// Return an iterator adaptor that filters out elements that have
@@ -748,12 +788,13 @@ pub trait Itertools : Iterator {
     /// itertools::assert_equal(data.into_iter().unique_by(|s| s.len()),
     ///                         vec!["a", "bb", "ccc"]);
     /// ```
+    #[cfg(feature = "use_std")]
     fn unique_by<V, F>(self, f: F) -> UniqueBy<Self, V, F>
         where Self: Sized,
               V: Eq + Hash,
               F: FnMut(&Self::Item) -> V
     {
-        adaptors::unique_by(self, f)
+        unique_impl::unique_by(self, f)
     }
 
     /// Return an iterator adaptor that borrows from this iterator and 
@@ -878,11 +919,12 @@ pub trait Itertools : Iterator {
     ///     vec![2, 3, 4],
     ///     ]);
     /// ```
+    #[cfg(feature = "use_std")]
     fn combinations(self, n: usize) -> Combinations<Self>
         where Self: Sized,
               Self::Item: Clone
     {
-        adaptors::combinations(self, n)
+        combinations::combinations(self, n)
     }
 
     /// Return an iterator adaptor that pads the sequence to a minimum length of
@@ -1116,6 +1158,7 @@ pub trait Itertools : Iterator {
 
     /// `.collect_vec()` is simply a type specialization of `.collect()`,
     /// for convenience.
+    #[cfg(feature = "use_std")]
     fn collect_vec(self) -> Vec<Self::Item>
         where Self: Sized
     {
@@ -1163,6 +1206,7 @@ pub trait Itertools : Iterator {
     /// assert_eq!(["a", "b", "c"].iter().join(", "), "a, b, c");
     /// assert_eq!([1, 2, 3].iter().join(", "), "1, 2, 3");
     /// ```
+    #[cfg(feature = "use_std")]
     fn join(&mut self, sep: &str) -> String
         where Self::Item: std::fmt::Display
     {
@@ -1414,6 +1458,7 @@ pub trait Itertools : Iterator {
     /// itertools::assert_equal(text.chars().sorted(),
     ///                         "abcdef".chars());
     /// ```
+    #[cfg(feature = "use_std")]
     fn sorted(self) -> Vec<Self::Item>
         where Self: Sized,
               Self::Item: Ord
@@ -1441,6 +1486,7 @@ pub trait Itertools : Iterator {
     /// itertools::assert_equal(oldest_people_first,
     ///                         vec!["Jill", "Jack", "Jane", "John"]);
     /// ```
+    #[cfg(feature = "use_std")]
     fn sorted_by<F>(self, cmp: F) -> Vec<Self::Item>
         where Self: Sized,
               F: FnMut(&Self::Item, &Self::Item) -> Ordering,
